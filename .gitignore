@@ -1,0 +1,38 @@
+# Python相关
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+*.egg-info/
+.eggs/
+dist/
+build/
+*.pyd
+*.dll
+
+# 日志文件
+logs/
+*.log
+*.bak
+
+# 测试相关（可选：如果不想上传测试图片，保留这部分；想上传则删除）
+test/test_cases/test_images/
+test/test_results/
+
+# 配置文件（可选：如果包含敏感信息，保留；否则删除）
+config/params.json
+.env
+
+# Windows系统文件
+Thumbs.db
+Desktop.ini
+*.tmp
+
+# IDE配置（如果你用PyCharm/Vscode，保留）
+.idea/
+.vscode/
+*.swp
+*.swo
