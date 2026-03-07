@@ -33,7 +33,14 @@ def load_image(img_path: str, scale_factor: float = 1.0) -> Tuple[Optional[np.nd
     img = cv2.imread(img_path)
     if img is None:
         raise InputError(f"图像加载失败（可能文件损坏）：{img_path}")
-    logger.info(f"图像加载成功：{img_path}，原始尺寸：{img.shape[:2]}")
+    h, w = img.shape[:2]
+    logger.info(f"图像加载成功：{img_path}，原始尺寸：{(h, w)}")
+
+    # 3.1 过小图像尺寸告警（但仍继续处理）
+    if h < 50 or w < 50:
+        logger.warning(
+            f"图像尺寸过小（{w}x{h}，最低建议尺寸50x50），可能影响检测与识别效果，将仍然继续处理"
+        )
 
     # 4. 缩放系数校验+图像缩放
     scale_range = get_config("input.scale_range")

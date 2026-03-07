@@ -5,8 +5,7 @@ import numpy as np
 from algorithm.core import logger
 from algorithm.input_module.batch_loader import load_batch_images
 from algorithm.preprocess_module.preprocess_core import run_preprocess
-from algorithm.detection_module.detection_core import run_detection
-from algorithm.recognition_module.recognition_core import run_recognition
+from algorithm.ocr_scheduler import run_ocr
 from algorithm.output_module.result_format import format_result
 from test.test_cases.test_data import load_annotation
 
@@ -74,17 +73,26 @@ def batch_ocr_test(folder_path: str, annotation_path: str = None) -> dict:
             logger.warning(f"跳过无效图像：{img_path}")
             continue
 
-        # 单图像OCR流程
+        # 单图像OCR流程（通过调度器自动选择方案A/B）
         processed_img, process_log = run_preprocess(img)
         bin_img = process_log["bin_img"]
-        boxes, _ = run_detection(bin_img, scale_factor)
-        recognition_results = run_recognition(processed_img, boxes)
-        formatted_result = format_result(img_path, boxes, recognition_results)
+        orientation_angle = process_log.get("orientation_angle", 0.0)
+        boxes, recognition_results, scheme_used = run_ocr(
+            original_img=img,
+            processed_img=processed_img,
+            bin_img=bin_img,
+            scale_factor=scale_factor,
+        )
+        logger.info(f"批量测试：图像{img_path}使用方案：{scheme_used}")
+        formatted_result = format_result(
+            img_path, boxes, recognition_results, orientation_angle=orientation_angle
+        )
         batch_formatted[img_path] = formatted_result
 
         # 计算指标（如果有标注）
         if img_path in annotation:
-            predicted = [r["text"] for r in formatted_result["results"]]
+            # 使用标准化结果中的recognitions字段
+            predicted = [r["text"] for r in formatted_result["recognitions"]]
             annotated = annotation[img_path]
             metrics = calculate_metrics(predicted, annotated)
             all_metrics.append(metrics)

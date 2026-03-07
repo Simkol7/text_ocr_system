@@ -15,8 +15,8 @@ sys.path.insert(0, project_root)
 from algorithm.core import logger, config_manager
 from algorithm.input_module.image_loader import load_image
 from algorithm.preprocess_module.preprocess_core import run_preprocess
+from algorithm.ocr_scheduler import run_ocr
 from algorithm.detection_module.detection_core import run_detection
-from algorithm.recognition_module.recognition_core import run_recognition
 from algorithm.output_module.result_format import format_result
 from algorithm.output_module.result_save import save_result
 from algorithm.output_module.result_show import print_result
@@ -44,15 +44,35 @@ def full_ocr_test(img_path: str, save_result_flag: bool = True) -> dict:
     # 2. 预处理
     processed_img, process_log = run_preprocess(img)
     bin_img = process_log["bin_img"]
+    orientation_angle = process_log.get("orientation_angle", 0.0)
 
-    # 3. 检测
-    boxes, vis_img = run_detection(bin_img, scale_factor)
+    # 3. 调度器：根据active_scheme自动选择方案A或方案B
+    boxes, recognition_results, scheme_used = run_ocr(
+        original_img=img,
+        processed_img=processed_img,
+        bin_img=bin_img,
+        scale_factor=scale_factor,
+    )
+    logger.info(f"本次全链路测试实际使用方案：{scheme_used}")
 
-    # 4. 识别
-    recognition_results = run_recognition(processed_img, boxes)
+    # 4. 可视化图像构造：
+    #    - 方案A：直接复用原有检测可视化逻辑
+    #    - 方案B：在原图上绘制EAST检测框
+    if scheme_used == "scheme_a":
+        _, vis_img = run_detection(bin_img, scale_factor)
+    else:
+        # 使用原始图像绘制方案B的检测框
+        vis_img = img.copy()
+        if len(vis_img.shape) == 2:
+            vis_img = cv2.cvtColor(vis_img, cv2.COLOR_GRAY2BGR)
+        for box in boxes:
+            x, y, w, h = box
+            cv2.rectangle(vis_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-    # 5. 结果格式化
-    formatted_result = format_result(img_path, boxes, recognition_results)
+    # 5. 结果格式化（增加倾斜校正角度）
+    formatted_result = format_result(
+        img_path, boxes, recognition_results, orientation_angle=orientation_angle
+    )
 
     # 6. 结果保存/打印（修改：传递project_root）
     if save_result_flag:
@@ -64,8 +84,7 @@ def full_ocr_test(img_path: str, save_result_flag: bool = True) -> dict:
 
 if __name__ == "__main__":
     # 替换为你的测试图像路径（建议用绝对路径，避免相对路径问题）
-    # 示例：test_img_path = "C:/Users/29707/Desktop/text_ocr_system/test/test_cases/test_images/test.jpg"
-    test_img_path = os.path.join(project_root, "test/test_cases/test_images/test.jpg")
+    test_img_path = os.path.join(project_root, "test/test_cases/test_images/test.png")
 
     if os.path.exists(test_img_path):
         full_ocr_test(test_img_path)

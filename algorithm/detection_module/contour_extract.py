@@ -23,7 +23,8 @@ def extract_contours(bin_img: np.ndarray) -> list:
     )
 
     if not contours:
-        raise DetectionError("未检测到任何轮廓")
+        logger.warning("未检测到任何轮廓，可能为无文本图像或预处理参数不合适")
+        return []
 
     logger.info(f"轮廓提取完成，原始轮廓数：{len(contours)}")
     return contours

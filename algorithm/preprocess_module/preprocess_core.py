@@ -18,9 +18,9 @@ def run_preprocess(img: np.ndarray) -> tuple[np.ndarray, dict]:
         img: 原始BGR图像
 
     Returns:
-        tuple: (处理后的灰度图, 预处理步骤日志)
+        tuple: (处理后的灰度图, 预处理步骤日志，含二值图与倾斜角度等信息)
     """
-    process_log = {}
+    process_log: dict = {}
     steps = get_config("preprocess.steps") if "preprocess.steps" in get_config() else [
         "gray", "clahe", "noise_removal", "binarization", "morphology", "orientation_fix"
     ]
@@ -43,7 +43,11 @@ def run_preprocess(img: np.ndarray) -> tuple[np.ndarray, dict]:
             elif step == "morphology":
                 process_log["bin_img"] = morphology_optimize(process_log["bin_img"])
             elif step == "orientation_fix":
-                current_img = fix_orientation(process_log["bin_img"], current_img)
+                # 倾斜校正：返回校正后图像和实际校正角度
+                current_img, orientation_angle = fix_orientation(
+                    process_log["bin_img"], current_img
+                )
+                process_log["orientation_angle"] = float(orientation_angle)
             else:
                 logger.warning(f"未知预处理步骤：{step}，跳过")
                 continue
@@ -58,6 +62,10 @@ def run_preprocess(img: np.ndarray) -> tuple[np.ndarray, dict]:
                 continue
             else:
                 raise PreprocessError(f"核心预处理步骤{step}失败：{str(e)}")
+
+    # 若流程中未执行倾斜校正步骤，则统一补充角度字段，保持结果结构稳定
+    if "orientation_angle" not in process_log:
+        process_log["orientation_angle"] = 0.0
 
     logger.info("预处理流程执行完成")
     return current_img, process_log

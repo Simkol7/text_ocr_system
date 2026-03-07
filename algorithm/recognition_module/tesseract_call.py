@@ -41,16 +41,18 @@ def call_tesseract(roi_img: np.ndarray, psm_type: str = "single_line") -> tuple[
     except Exception as e:
         raise RecognitionError(f"Tesseract调用失败：{str(e)}")
 
-    # 提取有效文本和置信度
-    text = ""
+    # 提取有效文本和置信度：忽略空字符串，只统计真正识别出的字符
+    text_parts = []
     confidences = []
     for i, conf in enumerate(details["conf"]):
-        if conf != -1:  # -1表示无文本
-            text += details["text"][i] + " "
+        raw_text = details["text"][i].strip()
+        # -1表示无文本，或文本为空字符串，都视为无效
+        if conf != -1 and raw_text:
+            text_parts.append(raw_text)
             confidences.append(conf)
 
-    text = text.strip()
-    avg_conf = np.mean(confidences) if confidences else 0.0
+    text = " ".join(text_parts).strip()
+    avg_conf = np.mean(confidences) if confidences and text else 0.0
 
     logger.info(f"Tesseract识别完成，PSM：{psm}，文本：{text}，置信度：{avg_conf:.2f}")
     return text, avg_conf

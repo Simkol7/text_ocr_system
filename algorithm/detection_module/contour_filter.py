@@ -15,7 +15,8 @@ def filter_contours(contours: list) -> list:
         list: 筛选后的轮廓列表
     """
     if not contours:
-        raise DetectionError("轮廓列表为空，无法筛选")
+        logger.warning("轮廓列表为空，跳过筛选，将视为无文本场景")
+        return []
 
     filter_config = get_config("detection.contour_filter")
     min_area = filter_config["min_area"]

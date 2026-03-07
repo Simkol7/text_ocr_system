@@ -21,8 +21,10 @@ def binarize(gray_img: np.ndarray) -> np.ndarray:
     bin_type = bin_config["type"]
 
     if bin_type == "global":
-        # 全局二值化（OTSU自动阈值）
-        _, bin_img = cv2.threshold(gray_img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        # 全局二值化（OTSU自动阈值），保持黑字白底
+        _, bin_img = cv2.threshold(
+            gray_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
+        )
     elif bin_type == "adaptive":
         # 自适应二值化（适配局部光照不均）
         block_size = bin_config["adaptive_block_size"]

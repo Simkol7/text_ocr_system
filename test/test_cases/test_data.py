@@ -40,11 +40,13 @@ def get_test_sets(base_path: str) -> dict:
         "challenge": os.path.join(base_path, "challenge")
     }
 
-    # 检查测试集路径
+    # 检查测试集路径（避免遍历时修改字典）
+    available_sets = {}
     for name, path in test_sets.items():
-        if not os.path.exists(path):
+        if os.path.exists(path):
+            available_sets[name] = path
+        else:
             logger.warning(f"测试集{name}路径不存在：{path}，已跳过")
-            del test_sets[name]
 
-    logger.info(f"加载测试集完成，可用测试集：{list(test_sets.keys())}")
-    return test_sets
+    logger.info(f"加载测试集完成，可用测试集：{list(available_sets.keys())}")
+    return available_sets

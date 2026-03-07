@@ -5,7 +5,12 @@ from algorithm.core import logger, handle_ocr_exception, OutputError
 
 
 @handle_ocr_exception
-def format_result(img_path: str, boxes: list, recognition_results: list) -> dict:
+def format_result(
+    img_path: str,
+    boxes: list,
+    recognition_results: list,
+    orientation_angle: float | None = None,
+) -> dict:
     """
     将检测框和识别结果格式化为标准化字典
 
@@ -13,6 +18,7 @@ def format_result(img_path: str, boxes: list, recognition_results: list) -> dict
         img_path: 原始图像路径
         boxes: 检测框列表（每个元素为[x, y, w, h]）
         recognition_results: 识别结果列表（兼容字典/列表/元组/字符串类型）
+        orientation_angle: 倾斜校正角度（单位：度），无校正时为0或None
 
     Returns:
         dict: 标准化识别结果
@@ -68,7 +74,8 @@ def format_result(img_path: str, boxes: list, recognition_results: list) -> dict
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "total_boxes": len(boxes),
         "valid_recognitions": len(valid_results),
-        "recognitions": valid_results
+        "orientation_angle": float(orientation_angle) if orientation_angle is not None else 0.0,
+        "recognitions": valid_results,
     }
 
     logger.info("识别结果标准化完成")

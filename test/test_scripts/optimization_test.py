@@ -27,7 +27,7 @@ def test_optimization_effect(img_path: str, annotation_path: str = None) -> dict
         annotation_path: 标注文件路径（可选）
 
     Returns:
-        dict: 优化前后的指标对比
+        dict: 优化前后的指标对比（含倾斜角度与检测框数量变化）
     """
     logger.info(f"===== 测试优化效果：{img_path} =====")
 
@@ -42,6 +42,7 @@ def test_optimization_effect(img_path: str, annotation_path: str = None) -> dict
 
     processed_img_no_opt, process_log_no_opt = run_preprocess(img)
     bin_img_no_opt = process_log_no_opt["bin_img"]
+    orientation_angle_no_opt = process_log_no_opt.get("orientation_angle", 0.0)
     boxes_no_opt, _ = run_detection(bin_img_no_opt, scale_factor)
     results_no_opt = run_recognition(processed_img_no_opt, boxes_no_opt)
     pred_no_opt = [r["text"] for r in results_no_opt]
@@ -55,20 +56,31 @@ def test_optimization_effect(img_path: str, annotation_path: str = None) -> dict
 
     processed_img_opt, process_log_opt = run_preprocess(img)
     bin_img_opt = process_log_opt["bin_img"]
+    orientation_angle_opt = process_log_opt.get("orientation_angle", 0.0)
     boxes_opt, _ = run_detection(bin_img_opt, scale_factor)
     results_opt = run_recognition(processed_img_opt, boxes_opt)
     pred_opt = [r["text"] for r in results_opt]
     metrics_opt = calculate_metrics(pred_opt, annotation)
 
-    # 对比结果
+    # 对比结果（增加检测框数量与倾斜角度信息）
     comparison = {
-        "no_optimization": metrics_no_opt,
-        "with_optimization": metrics_opt,
+        "no_optimization": {
+            "metrics": metrics_no_opt,
+            "num_boxes": len(boxes_no_opt),
+            "orientation_angle": float(orientation_angle_no_opt),
+        },
+        "with_optimization": {
+            "metrics": metrics_opt,
+            "num_boxes": len(boxes_opt),
+            "orientation_angle": float(orientation_angle_opt),
+        },
         "improvement": {
             "precision": metrics_opt["precision"] - metrics_no_opt["precision"],
             "recall": metrics_opt["recall"] - metrics_no_opt["recall"],
-            "f1": metrics_opt["f1"] - metrics_no_opt["f1"]
-        }
+            "f1": metrics_opt["f1"] - metrics_no_opt["f1"],
+            "num_boxes": len(boxes_opt) - len(boxes_no_opt),
+            "orientation_angle_delta": float(orientation_angle_opt - orientation_angle_no_opt),
+        },
     }
 
     logger.info(f"优化效果对比：{comparison}")

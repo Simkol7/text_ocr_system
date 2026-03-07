@@ -25,15 +25,20 @@ def run_detection(bin_img: np.ndarray, scale_factor: float = 1.0) -> tuple[list,
     contours = extract_contours(bin_img)
     # 2. 轮廓筛选
     filtered_contours = filter_contours(contours)
+
+    # 提前构造可视化图像（即便无检测框也返回背景图，方便后续保存）
+    vis_img = cv2.cvtColor(bin_img, cv2.COLOR_GRAY2BGR)
+
     if not filtered_contours:
-        raise DetectionError("筛选后无有效轮廓，检测失败")
+        logger.info("筛选后无有效轮廓，将视为未检测到文本，返回空检测框列表")
+        return [], vis_img
+
     # 3. 轮廓合并（生成检测框）
     boxes = merge_contours(filtered_contours)
     # 4. 坐标还原
     restored_boxes = restore_boxes(boxes, scale_factor)
 
     # 5. 可视化标注（在二值图上绘制检测框）
-    vis_img = cv2.cvtColor(bin_img, cv2.COLOR_GRAY2BGR)
     for box in boxes:
         x, y, w, h = box
         cv2.rectangle(vis_img, (x, y), (x + w, y + h), (0, 255, 0), 2)

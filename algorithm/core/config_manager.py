@@ -119,6 +119,59 @@ class ConfigManager:
                     f"PSM模式{key}={value}非法（需0-13），已修正为默认值{default_psm[key]}"
                 )
 
+        # ===================== 方案B（EAST+CRNN）相关配置校验 =====================
+        # 激活方案标记：scheme_a / scheme_b
+        # 若未配置，则默认使用scheme_a，确保后续get_config('active_scheme')稳定可用
+        if "active_scheme" not in self.config:
+            self.config["active_scheme"] = "scheme_a"
+        elif self.config["active_scheme"] not in ["scheme_a", "scheme_b"]:
+            logger.warning(f"active_scheme非法（{self.config['active_scheme']}），已重置为scheme_a")
+            self.config["active_scheme"] = "scheme_a"
+
+        # scheme_b 默认配置与路径校验（不强制要求模型文件存在，仅给出提示）
+        if "scheme_b" not in self.config:
+            self.config["scheme_b"] = {
+                "east_model_path": "./models/frozen_east_text_detection.pb",
+                "crnn_model_path": "./models/crnn.onnx",
+                "keys_path": "./models/keys.txt",
+                "input_size": [320, 320],
+                "conf_threshold": 0.5,
+                "nms_threshold": 0.4,
+            }
+
+        scheme_b_cfg = self.config["scheme_b"]
+        # 填充缺省字段
+        scheme_b_cfg.setdefault("east_model_path", "./models/frozen_east_text_detection.pb")
+        scheme_b_cfg.setdefault("crnn_model_path", "./models/crnn.onnx")
+        scheme_b_cfg.setdefault("keys_path", "./models/keys.txt")
+        scheme_b_cfg.setdefault("input_size", [320, 320])
+        scheme_b_cfg.setdefault("conf_threshold", 0.5)
+        scheme_b_cfg.setdefault("nms_threshold", 0.4)
+
+        # 阈值范围简单校验
+        conf_th = scheme_b_cfg["conf_threshold"]
+        if not (0.0 < conf_th <= 1.0):
+            scheme_b_cfg["conf_threshold"] = 0.5
+            logger.warning(f"EAST conf_threshold非法（{conf_th}），已修正为0.5")
+
+        nms_th = scheme_b_cfg["nms_threshold"]
+        if not (0.0 < nms_th <= 1.0):
+            scheme_b_cfg["nms_threshold"] = 0.4
+            logger.warning(f"EAST nms_threshold非法（{nms_th}），已修正为0.4")
+
+        # 模型文件存在性检查（仅告警，不中断程序）
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(self.config_path)))
+        east_path = os.path.join(project_root, scheme_b_cfg["east_model_path"])
+        crnn_path = os.path.join(project_root, scheme_b_cfg["crnn_model_path"])
+        keys_path = os.path.join(project_root, scheme_b_cfg["keys_path"])
+
+        if not os.path.exists(east_path):
+            logger.warning(f"EAST模型文件不存在：{east_path}，启用scheme_b时将无法使用深度学习检测")
+        if not os.path.exists(crnn_path):
+            logger.warning(f"CRNN模型文件不存在：{crnn_path}，启用scheme_b时将无法使用深度学习识别")
+        if not os.path.exists(keys_path):
+            logger.warning(f"CRNN字典文件不存在：{keys_path}，CTC解码将无法工作")
+
         logger.info("配置参数校验完成，非法参数已自动修正")
 
     def get_config(self, key: Optional[str] = None) -> Any:
